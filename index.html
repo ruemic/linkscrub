@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LinkScrub — Strip Tracking Parameters from URLs</title>
+  <meta name="description" content="Paste any URL and instantly remove UTM parameters, fbclid, gclid, and all tracking garbage. Free, browser-side, no signup.">
+  <meta name="keywords" content="UTM parameter remover, strip tracking from URL, remove UTM parameters, clean URL, URL scrubber, fbclid remover, gclid remover">
+  <meta property="og:title" content="LinkScrub — Strip Tracking Parameters from URLs">
+  <meta property="og:description" content="Paste any URL and instantly remove UTM parameters, fbclid, gclid, and all tracking garbage. Free, browser-side, no signup.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://linkscrub.radicchio.page">
+  <meta property="og:image" content="https://linkscrub.radicchio.page/og.png">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="LinkScrub — Strip Tracking Parameters from URLs">
+  <meta name="twitter:description" content="Paste any URL and instantly remove UTM parameters, fbclid, gclid, and all tracking garbage.">
+  <link rel="canonical" href="https://linkscrub.radicchio.page">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "LinkScrub",
+    "description": "Paste any URL and instantly remove UTM parameters, fbclid, gclid, and all tracking garbage. Free, browser-side, no signup required.",
+    "url": "https://linkscrub.radicchio.page",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Any",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "featureList": [
+      "Remove UTM parameters (utm_source, utm_medium, utm_campaign, utm_term, utm_content)",
+      "Remove Facebook click ID (fbclid)",
+      "Remove Google click ID (gclid, gclsrc)",
+      "Remove Microsoft click ID (msclkid)",
+      "Remove Google Analytics client ID (_ga, _gid)",
+      "Remove MailChimp tracking (mc_cid, mc_eid)",
+      "Show diff of removed parameters",
+      "One-click copy of clean URL",
+      "Runs entirely in your browser — no data sent to server"
+    ]
+  }
+  </script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What tracking parameters does LinkScrub remove?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "LinkScrub removes all common tracking parameters including UTM tags (utm_source, utm_medium, utm_campaign, utm_term, utm_content, utm_id), Facebook click IDs (fbclid), Google click IDs (gclid, gclsrc), Microsoft click IDs (msclkid), Yahoo click IDs (yclid), Google Analytics client IDs (_ga, _gid, _gac), MailChimp tracking (mc_cid, mc_eid), and many more."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does LinkScrub send my URLs to a server?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. LinkScrub runs entirely in your browser using the native URL API. Your URLs never leave your device. There is no server, no database, and no logging."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Why should I remove tracking parameters from URLs?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Tracking parameters like UTM tags and click IDs expose analytics metadata to the recipient and to anyone who sees the link. They make URLs look cluttered and unprofessional. When you share a link in a document, message, or social post, the recipient can see exactly where you came from and which campaign you clicked. Removing them keeps links clean and prevents that metadata from following the link."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Will removing UTM parameters break the destination page?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. UTM parameters are read by analytics tools when the page loads — they have no effect on the page itself. Removing them only means the visit won't be attributed to a specific campaign in the site owner's analytics. The destination page will load exactly as normal."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What is a UTM parameter?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "UTM parameters (Urchin Tracking Module) are tags added to URLs to track the effectiveness of marketing campaigns. They were originally developed by Urchin Software (acquired by Google in 2005) and are now the industry standard for campaign attribution in Google Analytics and other tools. Common UTM tags include utm_source (where the traffic came from), utm_medium (the channel), and utm_campaign (the specific campaign name)."
+        }
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #1a1713;
+      --surface: #211f1b;
+      --border: #2e2b26;
+      --text: #e0d8c8;
+      --muted: #8f8577;
+      --accent: #c8a84e;
+      --accent-dim: #a88830;
+      --green: #6a9e5f;
+      --red: #c05050;
+      --removed-bg: #2a1a1a;
+      --removed-text: #c08080;
+      --font: 'Courier New', 'Consolas', monospace;
+    }
+
+    html { font-size: 16px; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      align-items: baseline;
+      gap: 1rem;
+    }
+
+    .logo {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: var(--accent);
+      letter-spacing: 0.02em;
+      text-decoration: none;
+    }
+
+    .tagline {
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    main {
+      flex: 1;
+      max-width: 780px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    h1 {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: var(--text);
+      margin-bottom: 0.4rem;
+      letter-spacing: 0.01em;
+    }
+
+    .subtitle {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 2rem;
+    }
+
+    .input-section {
+      margin-bottom: 1.5rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.5rem;
+    }
+
+    textarea {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 0.82rem;
+      padding: 0.75rem 1rem;
+      resize: vertical;
+      min-height: 80px;
+      border-radius: 3px;
+      outline: none;
+      transition: border-color 0.15s;
+      line-height: 1.5;
+    }
+
+    textarea:focus {
+      border-color: var(--accent-dim);
+    }
+
+    textarea::placeholder {
+      color: var(--muted);
+      opacity: 0.5;
+    }
+
+    .controls {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .btn {
+      font-family: var(--font);
+      font-size: 0.78rem;
+      padding: 0.45rem 1rem;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      border-radius: 3px;
+      transition: border-color 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      border-color: var(--muted);
+      color: var(--text);
+    }
+
+    .btn-primary {
+      border-color: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    .btn-primary:hover {
+      border-color: var(--accent);
+    }
+
+    .btn-copy {
+      border-color: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    .btn-copy:hover {
+      border-color: var(--accent);
+    }
+
+    .btn-copy.copied {
+      border-color: var(--green);
+      color: var(--green);
+    }
+
+    .result-section {
+      display: none;
+    }
+
+    .result-section.visible {
+      display: block;
+    }
+
+    .result-block {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      margin-bottom: 1rem;
+    }
+
+    .result-block-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.6rem 1rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .result-block-header .status-badge {
+      font-size: 0.7rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 2px;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .badge-clean {
+      background: rgba(106, 158, 95, 0.15);
+      color: var(--green);
+      border: 1px solid rgba(106, 158, 95, 0.3);
+    }
+
+    .badge-original {
+      background: rgba(192, 80, 80, 0.1);
+      color: var(--removed-text);
+      border: 1px solid rgba(192, 80, 80, 0.2);
+    }
+
+    .result-url {
+      padding: 0.75rem 1rem;
+      font-size: 0.82rem;
+      word-break: break-all;
+      line-height: 1.5;
+    }
+
+    .result-url .url-base {
+      color: var(--text);
+    }
+
+    .result-url .url-param-kept {
+      color: var(--muted);
+    }
+
+    .result-url .url-param-removed {
+      color: var(--removed-text);
+      text-decoration: line-through;
+      opacity: 0.7;
+    }
+
+    .removed-params {
+      padding: 0.75rem 1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .removed-params-title {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.5rem;
+    }
+
+    .param-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+
+    .param-tag {
+      font-size: 0.72rem;
+      padding: 0.2rem 0.5rem;
+      background: var(--removed-bg);
+      border: 1px solid rgba(192, 80, 80, 0.25);
+      border-radius: 2px;
+      color: var(--removed-text);
+    }
+
+    .param-tag .param-key {
+      color: var(--removed-text);
+    }
+
+    .no-tracking {
+      padding: 1rem;
+      text-align: center;
+      font-size: 0.82rem;
+      color: var(--green);
+    }
+
+    .copy-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .clean-url-text {
+      flex: 1;
+      font-size: 0.78rem;
+      color: var(--muted);
+      word-break: break-all;
+      line-height: 1.4;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 2.5rem 0;
+    }
+
+    .tracking-params-reference {
+      margin-bottom: 2.5rem;
+    }
+
+    .tracking-params-reference h2 {
+      font-size: 0.9rem;
+      color: var(--text);
+      margin-bottom: 0.75rem;
+      font-weight: bold;
+    }
+
+    .param-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+    }
+
+    .param-table th {
+      text-align: left;
+      padding: 0.5rem 0.75rem;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      font-weight: normal;
+      text-transform: uppercase;
+      font-size: 0.7rem;
+      letter-spacing: 0.06em;
+    }
+
+    .param-table td {
+      padding: 0.45rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      vertical-align: top;
+    }
+
+    .param-table td:first-child {
+      color: var(--accent);
+      white-space: nowrap;
+    }
+
+    .param-table td:last-child {
+      color: var(--muted);
+    }
+
+    .param-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .about-section {
+      margin-bottom: 2.5rem;
+    }
+
+    .about-section h2 {
+      font-size: 0.9rem;
+      color: var(--text);
+      margin-bottom: 0.75rem;
+      font-weight: bold;
+    }
+
+    .about-section p {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+      line-height: 1.7;
+    }
+
+    .faq-section {
+      margin-bottom: 2.5rem;
+    }
+
+    .faq-section h2 {
+      font-size: 0.9rem;
+      color: var(--text);
+      margin-bottom: 1rem;
+      font-weight: bold;
+    }
+
+    .faq-item {
+      margin-bottom: 1.25rem;
+    }
+
+    .faq-q {
+      font-size: 0.82rem;
+      color: var(--text);
+      margin-bottom: 0.35rem;
+      font-weight: bold;
+    }
+
+    .faq-a {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .related-tools {
+      margin-bottom: 2rem;
+    }
+
+    .related-tools h2 {
+      font-size: 0.9rem;
+      color: var(--text);
+      margin-bottom: 0.75rem;
+      font-weight: bold;
+    }
+
+    .tool-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .tool-link {
+      font-size: 0.78rem;
+      color: var(--accent);
+      text-decoration: none;
+      padding: 0.3rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      transition: border-color 0.15s;
+    }
+
+    .tool-link:hover {
+      border-color: var(--accent-dim);
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 1rem 1.5rem;
+      font-size: 0.72rem;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    footer a {
+      color: var(--muted);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      color: var(--text);
+    }
+
+    @media (max-width: 600px) {
+      header { flex-direction: column; gap: 0.25rem; }
+      .controls { flex-direction: column; align-items: stretch; }
+      .btn { text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="/">LinkScrub</a>
+  <span class="tagline">strip tracking parameters from URLs</span>
+</header>
+
+<main>
+  <h1>Remove tracking parameters from any URL</h1>
+  <p class="subtitle">Paste a URL below. UTM tags, fbclid, gclid, and other trackers are removed instantly — no signup, no server, runs in your browser.</p>
+
+  <div class="input-section">
+    <label for="url-input">URL to scrub</label>
+    <textarea
+      id="url-input"
+      placeholder="https://example.com/article?utm_source=newsletter&utm_medium=email&utm_campaign=may-2026&fbclid=IwAR123..."
+      autocomplete="off"
+      autocorrect="off"
+      autocapitalize="off"
+      spellcheck="false"
+    ></textarea>
+    <div class="controls">
+      <button class="btn btn-primary" id="btn-scrub">Scrub URL</button>
+      <button class="btn" id="btn-clear">Clear</button>
+    </div>
+  </div>
+
+  <div class="result-section" id="result-section">
+    <div class="result-block" id="result-clean-block">
+      <div class="result-block-header">
+        <span>Clean URL</span>
+        <span class="status-badge badge-clean">tracking removed</span>
+      </div>
+      <div class="copy-row">
+        <span class="clean-url-text" id="clean-url-display"></span>
+        <button class="btn btn-copy" id="btn-copy">Copy</button>
+      </div>
+      <div class="removed-params" id="removed-params-section">
+        <div class="removed-params-title">Parameters removed</div>
+        <div class="param-list" id="param-list"></div>
+      </div>
+    </div>
+
+    <div class="result-block" id="result-no-tracking" style="display:none">
+      <div class="no-tracking">✓ No tracking parameters found — URL is already clean</div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="about-section">
+    <h2>What is LinkScrub?</h2>
+    <p>
+      LinkScrub is a free, browser-side tool that removes tracking parameters from URLs before you share them.
+      When you click a link in an email newsletter, a social media post, or an ad, the URL often has extra parameters
+      appended — things like <code style="color:var(--accent)">utm_source=newsletter</code> or <code style="color:var(--accent)">fbclid=IwAR...</code>.
+      These parameters are used by marketers and analytics platforms to track where traffic came from.
+    </p>
+    <p>
+      That's fine for the site owner. But when you forward that link or paste it somewhere else, those tracking tags
+      come along for the ride. The recipient can see that you came from a specific email campaign. The link looks
+      cluttered. And whoever receives it has unnecessary metadata attached to their click.
+    </p>
+    <p>
+      LinkScrub removes all common tracking parameters in one step. Paste the URL, click Scrub, copy the clean version.
+      Everything runs in your browser — the URL never leaves your device.
+    </p>
+  </div>
+
+  <div class="tracking-params-reference">
+    <h2>Tracking parameters removed</h2>
+    <table class="param-table">
+      <thead>
+        <tr>
+          <th>Parameter</th>
+          <th>Platform</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>utm_source</td><td>Google Analytics / Universal</td><td>Traffic source (newsletter, google, facebook…)</td></tr>
+        <tr><td>utm_medium</td><td>Google Analytics</td><td>Marketing channel (email, cpc, organic…)</td></tr>
+        <tr><td>utm_campaign</td><td>Google Analytics</td><td>Campaign name</td></tr>
+        <tr><td>utm_term</td><td>Google Analytics</td><td>Paid search keyword</td></tr>
+        <tr><td>utm_content</td><td>Google Analytics</td><td>Ad variant for A/B testing</td></tr>
+        <tr><td>utm_id</td><td>Google Analytics 4</td><td>Campaign ID</td></tr>
+        <tr><td>fbclid</td><td>Facebook</td><td>Facebook click identifier</td></tr>
+        <tr><td>gclid</td><td>Google Ads</td><td>Google click identifier</td></tr>
+        <tr><td>gclsrc</td><td>Google Ads</td><td>Google click source</td></tr>
+        <tr><td>msclkid</td><td>Microsoft / Bing Ads</td><td>Microsoft click identifier</td></tr>
+        <tr><td>yclid</td><td>Yahoo / Yandex</td><td>Yahoo/Yandex click identifier</td></tr>
+        <tr><td>_ga</td><td>Google Analytics</td><td>GA client ID parameter</td></tr>
+        <tr><td>_gid</td><td>Google Analytics</td><td>GA session ID parameter</td></tr>
+        <tr><td>_gac_*</td><td>Google Analytics</td><td>GA conversion parameter</td></tr>
+        <tr><td>mc_cid</td><td>MailChimp</td><td>MailChimp campaign ID</td></tr>
+        <tr><td>mc_eid</td><td>MailChimp</td><td>MailChimp email recipient ID</td></tr>
+        <tr><td>ref</td><td>Various</td><td>Referrer attribution parameter</td></tr>
+        <tr><td>affiliate</td><td>Various</td><td>Affiliate tracking parameter</td></tr>
+        <tr><td>click_id</td><td>Various</td><td>Generic click tracking ID</td></tr>
+        <tr><td>ttclid</td><td>TikTok Ads</td><td>TikTok click identifier</td></tr>
+        <tr><td>twclid</td><td>Twitter / X Ads</td><td>Twitter click identifier</td></tr>
+        <tr><td>li_fat_id</td><td>LinkedIn Ads</td><td>LinkedIn first-party ad tracking</td></tr>
+        <tr><td>igshid</td><td>Instagram</td><td>Instagram share ID</td></tr>
+        <tr><td>s_cid</td><td>Adobe Analytics</td><td>Adobe campaign ID</td></tr>
+        <tr><td>mkt_tok</td><td>Marketo</td><td>Marketo tracking token</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="faq-section">
+    <h2>FAQ</h2>
+
+    <div class="faq-item">
+      <div class="faq-q">Does LinkScrub send my URLs to a server?</div>
+      <div class="faq-a">No. Everything runs in your browser using the native JavaScript URL API. Your URLs never leave your device. There is no server, no database, and no logging of any kind.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Will removing UTM parameters break the destination page?</div>
+      <div class="faq-a">No. UTM parameters are read by the analytics platform when the page loads — they have no effect on the page itself. The destination page loads exactly as normal; it simply won't record your visit as coming from a specific campaign.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">What if the URL has parameters that aren't tracking-related?</div>
+      <div class="faq-a">LinkScrub only removes known tracking parameters. Query parameters that aren't in the tracking list are preserved. If you need to remove custom parameters, you can edit the cleaned URL manually in the output field.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">What is a UTM parameter?</div>
+      <div class="faq-a">UTM parameters (Urchin Tracking Module) are tags added to URLs to track the effectiveness of marketing campaigns. They were originally developed by Urchin Software (acquired by Google in 2005) and are now the industry standard for campaign attribution in Google Analytics and other platforms. Common UTM tags include utm_source (where traffic came from), utm_medium (the channel), and utm_campaign (the campaign name).</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">Can I use LinkScrub from a browser extension or command line?</div>
+      <div class="faq-a">The web app is the free utility. A browser extension for right-click → "Scrub this link" is a planned paid upgrade. Developer API and MCP tool support are also planned — see AGENTS.md for the machine-readable interface spec.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">How do I use it?</div>
+      <div class="faq-a">Paste the URL into the input box and click "Scrub URL" (or press Ctrl+Enter). The clean URL appears with a list of removed parameters. Click "Copy" to copy it to your clipboard. That's it.</div>
+    </div>
+  </div>
+
+  <div class="related-tools">
+    <h2>More tools</h2>
+    <div class="tool-links">
+      <a class="tool-link" href="https://cronfig.radicchio.page">Cronfig — cron expression tester</a>
+      <a class="tool-link" href="https://envlint.com">EnvLint — .env file validator</a>
+      <a class="tool-link" href="https://radish.radicchio.page">Radish — stack trace explainer</a>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  <span>LinkScrub — strip tracking parameters from URLs · Free, browser-side, no signup</span>
+  <span>
+    <a href="https://bitterdesk.com">Support</a>
+    &nbsp;·&nbsp;
+    <a href="/privacy.html">Privacy</a>
+  </span>
+</footer>
+
+<script>
+  // Comprehensive list of known tracking parameters
+  const TRACKING_PARAMS = new Set([
+    // Google Analytics / Universal UTM
+    'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'utm_id',
+    // Google Analytics client/session IDs
+    '_ga', '_gid', '_gl',
+    // Google Ads
+    'gclid', 'gclsrc', 'dclid',
+    // Facebook / Meta
+    'fbclid', 'fb_action_ids', 'fb_action_types', 'fb_source', 'action_object_map', 'action_type_map', 'action_ref_map',
+    // Microsoft / Bing
+    'msclkid',
+    // Yahoo / Yandex
+    'yclid',
+    // TikTok
+    'ttclid',
+    // Twitter / X
+    'twclid',
+    // LinkedIn
+    'li_fat_id',
+    // Instagram
+    'igshid',
+    // MailChimp
+    'mc_cid', 'mc_eid',
+    // Adobe Analytics
+    's_cid', 's_kwcid',
+    // Marketo
+    'mkt_tok',
+    // HubSpot
+    '_hsmi', '_hsenc', 'hsCtaTracking',
+    // Klaviyo
+    'kx',
+    // Drip
+    '__s',
+    // Vero
+    'vero_conv', 'vero_id',
+    // Intercom
+    'intercom-campaign-id',
+    // Generic
+    'ref', 'referrer', 'affiliate', 'click_id', 'clickid', 'ad_id', 'adid',
+    'campaign_id', 'campaign', 'source', 'medium',
+  ]);
+
+  // Prefix patterns for tracking params (e.g. _gac_UA-123456)
+  const TRACKING_PREFIXES = ['_gac_', 'utm_', 'pk_', 'piwik_', 'matomo_'];
+
+  function isTrackingParam(key) {
+    const lower = key.toLowerCase();
+    if (TRACKING_PARAMS.has(lower)) return true;
+    for (const prefix of TRACKING_PREFIXES) {
+      if (lower.startsWith(prefix)) return true;
+    }
+    return false;
+  }
+
+  function scrubUrl(raw) {
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+
+    let url;
+    try {
+      url = new URL(trimmed);
+    } catch (e) {
+      // Try adding https://
+      try {
+        url = new URL('https://' + trimmed);
+      } catch (e2) {
+        return { error: 'Invalid URL — could not parse. Make sure it includes the full address (e.g. https://example.com).' };
+      }
+    }
+
+    const kept = [];
+    const removed = [];
+
+    for (const [key, value] of url.searchParams.entries()) {
+      if (isTrackingParam(key)) {
+        removed.push({ key, value });
+      } else {
+        kept.push({ key, value });
+      }
+    }
+
+    // Reconstruct URL without tracking params
+    const cleanUrl = new URL(url.toString());
+    cleanUrl.search = '';
+    for (const { key, value } of kept) {
+      cleanUrl.searchParams.append(key, value);
+    }
+
+    return {
+      original: trimmed,
+      clean: cleanUrl.toString(),
+      kept,
+      removed,
+      changed: removed.length > 0,
+    };
+  }
+
+  const inputEl = document.getElementById('url-input');
+  const resultSection = document.getElementById('result-section');
+  const cleanUrlDisplay = document.getElementById('clean-url-display');
+  const paramList = document.getElementById('param-list');
+  const removedParamsSection = document.getElementById('removed-params-section');
+  const resultNoTracking = document.getElementById('result-no-tracking');
+  const resultCleanBlock = document.getElementById('result-clean-block');
+  const btnScrub = document.getElementById('btn-scrub');
+  const btnClear = document.getElementById('btn-clear');
+  const btnCopy = document.getElementById('btn-copy');
+
+  let currentCleanUrl = '';
+
+  function render(result) {
+    if (!result) {
+      resultSection.classList.remove('visible');
+      return;
+    }
+
+    if (result.error) {
+      resultSection.classList.add('visible');
+      resultCleanBlock.style.display = 'none';
+      resultNoTracking.style.display = 'block';
+      resultNoTracking.innerHTML = `<span style="color:var(--red)">⚠ ${result.error}</span>`;
+      currentCleanUrl = '';
+      return;
+    }
+
+    resultSection.classList.add('visible');
+
+    if (!result.changed) {
+      resultCleanBlock.style.display = 'none';
+      resultNoTracking.style.display = 'block';
+      resultNoTracking.innerHTML = '<span style="color:var(--green)">✓ No tracking parameters found — URL is already clean</span>';
+      currentCleanUrl = result.clean;
+      return;
+    }
+
+    resultNoTracking.style.display = 'none';
+    resultCleanBlock.style.display = 'block';
+
+    currentCleanUrl = result.clean;
+    cleanUrlDisplay.textContent = result.clean;
+
+    // Render removed params
+    paramList.innerHTML = '';
+    for (const { key, value } of result.removed) {
+      const tag = document.createElement('span');
+      tag.className = 'param-tag';
+      tag.textContent = value ? `${key}=${value.length > 20 ? value.slice(0, 20) + '…' : value}` : key;
+      paramList.appendChild(tag);
+    }
+
+    removedParamsSection.style.display = result.removed.length > 0 ? 'block' : 'none';
+    btnCopy.textContent = 'Copy';
+    btnCopy.classList.remove('copied');
+  }
+
+  btnScrub.addEventListener('click', () => {
+    const raw = inputEl.value;
+    if (!raw.trim()) return;
+    render(scrubUrl(raw));
+  });
+
+  btnClear.addEventListener('click', () => {
+    inputEl.value = '';
+    resultSection.classList.remove('visible');
+    currentCleanUrl = '';
+    inputEl.focus();
+  });
+
+  btnCopy.addEventListener('click', () => {
+    if (!currentCleanUrl) return;
+    navigator.clipboard.writeText(currentCleanUrl).then(() => {
+      btnCopy.textContent = 'Copied!';
+      btnCopy.classList.add('copied');
+      setTimeout(() => {
+        btnCopy.textContent = 'Copy';
+        btnCopy.classList.remove('copied');
+      }, 2000);
+    });
+  });
+
+  // Ctrl+Enter / Cmd+Enter to scrub
+  inputEl.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      const raw = inputEl.value;
+      if (raw.trim()) render(scrubUrl(raw));
+    }
+  });
+
+  // Auto-scrub on paste if the input is currently empty
+  inputEl.addEventListener('paste', (e) => {
+    setTimeout(() => {
+      const val = inputEl.value.trim();
+      if (val.startsWith('http://') || val.startsWith('https://')) {
+        render(scrubUrl(val));
+      }
+    }, 50);
+  });
+</script>
+</body>
+</html>
