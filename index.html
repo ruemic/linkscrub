@@ -668,32 +668,32 @@
     <h2>FAQ</h2>
 
     <div class="faq-item">
-      <div class="faq-q">Does LinkScrub send my URLs to a server?</div>
+      <h3 class="faq-q">Does LinkScrub send my URLs to a server?</h3>
       <div class="faq-a">No. Everything runs in your browser using the native JavaScript URL API. Your URLs never leave your device. There is no server, no database, and no logging of any kind.</div>
     </div>
 
     <div class="faq-item">
-      <div class="faq-q">Will removing UTM parameters break the destination page?</div>
+      <h3 class="faq-q">Will removing UTM parameters break the destination page?</h3>
       <div class="faq-a">No. UTM parameters are read by the analytics platform when the page loads — they have no effect on the page itself. The destination page loads exactly as normal; it simply won't record your visit as coming from a specific campaign.</div>
     </div>
 
     <div class="faq-item">
-      <div class="faq-q">What if the URL has parameters that aren't tracking-related?</div>
+      <h3 class="faq-q">What if the URL has parameters that aren't tracking-related?</h3>
       <div class="faq-a">LinkScrub only removes known tracking parameters. Query parameters that aren't in the tracking list are preserved. If you need to remove custom parameters, you can edit the cleaned URL manually in the output field.</div>
     </div>
 
     <div class="faq-item">
-      <div class="faq-q">What is a UTM parameter?</div>
+      <h3 class="faq-q">What is a UTM parameter?</h3>
       <div class="faq-a">UTM parameters (Urchin Tracking Module) are tags added to URLs to track the effectiveness of marketing campaigns. They were originally developed by Urchin Software (acquired by Google in 2005) and are now the industry standard for campaign attribution in Google Analytics and other platforms. Common UTM tags include utm_source (where traffic came from), utm_medium (the channel), and utm_campaign (the campaign name).</div>
     </div>
 
     <div class="faq-item">
-      <div class="faq-q">Can I use LinkScrub from a browser extension or command line?</div>
+      <h3 class="faq-q">Can I use LinkScrub from a browser extension or command line?</h3>
       <div class="faq-a">The web app is the free utility. A browser extension for right-click → "Scrub this link" is a planned paid upgrade. Developer API and MCP tool support are also planned — see AGENTS.md for the machine-readable interface spec.</div>
     </div>
 
     <div class="faq-item">
-      <div class="faq-q">How do I use it?</div>
+      <h3 class="faq-q">How do I use it?</h3>
       <div class="faq-a">Paste the URL into the input box and click "Scrub URL" (or press Ctrl+Enter). The clean URL appears with a list of removed parameters. Click "Copy" to copy it to your clipboard. That's it.</div>
     </div>
   </div>
