@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-03-27
+
+### Added
+- Google Analytics 4 tracking
+
 ## 2026-03-22
 
 ### Improved
